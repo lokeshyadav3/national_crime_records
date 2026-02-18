@@ -20,8 +20,13 @@ export async function GET(request: NextRequest) {
     const rank = searchParams.get('rank');
     const status = searchParams.get('status');
 
-    const requestedStationId = stationIdParam ? Number(stationIdParam) : null;
-    if (stationIdParam && (!Number.isFinite(requestedStationId) || requestedStationId <= 0)) {
+    const requestedStationId = stationIdParam ? Number(stationIdParam) : undefined;
+    if (
+      stationIdParam &&
+      (requestedStationId === undefined ||
+        !Number.isFinite(requestedStationId) ||
+        requestedStationId <= 0)
+    ) {
       return NextResponse.json(
         { success: false, message: 'Invalid station_id' },
         { status: 400 }
@@ -36,7 +41,7 @@ export async function GET(request: NextRequest) {
     `;
     const params: any[] = [];
 
-    const userStationId = user.station_id ? Number(user.station_id) : null;
+    const userStationId = user.station_id ? Number(user.station_id) : undefined;
     if (user.role !== 'Admin' && userStationId) {
       if (requestedStationId && requestedStationId !== userStationId) {
         return NextResponse.json(

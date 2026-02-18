@@ -36,7 +36,7 @@ ALTER SEQUENCE supplementary_statements_id_seq RESTART WITH 1;
 
 INSERT INTO users (username, password_hash, role, officer_id, station_id, is_active)
 VALUES
-('admin', '$2a$10$fS4JVf9aWaUaciOu3M4JROXraquF9S7YebmNn4YvBjRg0BBn0FVX', 'Admin', NULL, NULL, TRUE);
+('admin', '$2b$10$cOJGuhDw230bcNUAy/XZruoNC4GDM.Ww1Ry.G8d/DyMGgrUWp5I8e', 'Admin', NULL, NULL, TRUE);
 
 -- ============================================
 -- VERIFICATION

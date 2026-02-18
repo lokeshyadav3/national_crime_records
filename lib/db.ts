@@ -1,7 +1,65 @@
 import { Pool, QueryResult } from 'pg';
 
-// Database connection configuration
-const pool = new Pool({
+type PgParam =
+  | string
+  | number
+  | boolean
+  | null
+  | undefined
+  | Date
+  | Uint8Array
+  | Record<string, unknown>;
+
+const connectionString =
+  process.env.DATABASE_URL || process.env.DB_CONNECTION_STRING || '';
+
+let warnedNoPrimary = false;
+let warnedPrimaryFallback = false;
+
+function isConnectionUnavailableError(error: unknown): boolean {
+  const code: unknown =
+    typeof error === 'object' && error !== null && 'code' in error
+      ? (error as { code?: unknown }).code
+      : undefined;
+
+  // Node/network errors commonly seen when DB is unreachable
+  const networkCodes = new Set([
+    'ECONNREFUSED',
+    'ETIMEDOUT',
+    'ENOTFOUND',
+    'EAI_AGAIN',
+    'ECONNRESET',
+    'EPIPE',
+    'ENETUNREACH',
+    'EHOSTUNREACH',
+  ]);
+  if (typeof code === 'string' && networkCodes.has(code)) {
+    return true;
+  }
+
+  // Postgres SQLSTATE class 08xxx = connection exception
+  if (typeof code === 'string' && /^08\d{3}$/.test(code)) {
+    return true;
+  }
+
+  return false;
+}
+
+// Primary (online) pool via connection string if provided
+const primaryPool = connectionString
+  ? new Pool({
+    connectionString,
+    ssl:
+      process.env.DB_SSL === 'true' || /sslmode=require/i.test(connectionString)
+        ? { rejectUnauthorized: false }
+        : undefined,
+    max: 10,
+    idleTimeoutMillis: 30000,
+  })
+  : null;
+
+// Local fallback pool
+const fallbackPool = new Pool({
   host: process.env.DB_HOST || 'localhost',
   user: process.env.DB_USER || 'postgres',
   password: process.env.DB_PASSWORD || 'admin',
@@ -12,13 +70,20 @@ const pool = new Pool({
 });
 
 export function getPool(): Pool {
-  return pool;
+  if (!primaryPool && !warnedNoPrimary) {
+    warnedNoPrimary = true;
+    console.warn(
+      'DATABASE_URL is not set; using local database connection settings.'
+    );
+  }
+
+  return primaryPool ?? fallbackPool;
 }
 
 // Execute query with error handling
-export async function executeQuery<T = any>(
+export async function executeQuery<T = unknown>(
   query: string,
-  params: any[] = []
+  params: readonly unknown[] = []
 ): Promise<T> {
   // Convert standard '?' placeholders to Postgres '$1, $2' format if needed
   // But standardizing on using $1, $2 in query strings is better in Postgres.
@@ -37,25 +102,46 @@ export async function executeQuery<T = any>(
   // Handle specific MySQL-syntax replacements if any (e.g. LAST_INSERT_ID() -> RETURNING id)
   // This is a basic adapter. Ideally, we should update queries in route files.
 
-  try {
+  const runWithPool = async (pool: Pool): Promise<T> => {
     const client = await pool.connect();
     try {
-      const result: QueryResult = await client.query(query.includes('?') ? pgQuery : query, params);
+      const result: QueryResult = await client.query(
+        query.includes('?') ? pgQuery : query,
+        params as PgParam[]
+      );
 
-      // Attempt to normalize result to look like MySQL (array of rows)
-      // For INSERTs, 'pg' returns result.rows which might be empty unless RETURNING is used.
-      // MySQL 'execute' returns [rows, fields] or [ResultSetHeader] for inserts.
-
-      // If result.command is INSERT/UPDATE/DELETE, we might want to return something consistent.
       if (result.command === 'INSERT' && result.rows.length > 0) {
-        // If we used RETURNING id, map it to insertId-like structure if code expects it
-        return result.rows as any;
+        return result.rows as unknown as T;
       }
 
-      return result.rows as any; // Cast to T
+      return result.rows as unknown as T;
     } finally {
       client.release();
     }
+  };
+
+  try {
+    if (primaryPool) {
+      try {
+        return await runWithPool(primaryPool);
+      } catch (error) {
+        if (isConnectionUnavailableError(error)) {
+          if (!warnedPrimaryFallback) {
+            warnedPrimaryFallback = true;
+            console.warn(
+              'Primary database unavailable; falling back to local database.'
+            );
+          }
+          return await runWithPool(fallbackPool);
+        }
+
+        // If the primary DB is reachable but misconfigured (e.g., auth failure),
+        // surface the error instead of silently switching databases.
+        throw error;
+      }
+    }
+
+    return await runWithPool(fallbackPool);
   } catch (error) {
     console.error('Database query error:', error);
     throw error;
@@ -63,21 +149,38 @@ export async function executeQuery<T = any>(
 }
 
 // Get a single row
-export async function queryOne<T = any>(
+export async function queryOne<T = unknown>(
   query: string,
-  params: any[] = []
+  params: readonly unknown[] = []
 ): Promise<T | null> {
-  const rows = await executeQuery<any[]>(query, params);
+  const rows = await executeQuery<unknown[]>(query, params);
   return rows && rows.length > 0 ? (rows[0] as T) : null;
 }
 
 // Test database connection
 export async function testConnection(): Promise<boolean> {
   try {
-    const client = await pool.connect();
+    if (primaryPool) {
+      try {
+        const client = await primaryPool.connect();
+        await client.query('SELECT 1');
+        client.release();
+        console.log('Database connected successfully (primary)');
+        return true;
+      } catch (error) {
+        if (isConnectionUnavailableError(error)) {
+          console.warn('Primary database unavailable, testing fallback.');
+        } else {
+          console.error('Primary database connection failed:', error);
+          return false;
+        }
+      }
+    }
+
+    const client = await fallbackPool.connect();
     await client.query('SELECT 1');
     client.release();
-    console.log('Database connected successfully (PostgreSQL)');
+    console.log('Database connected successfully (fallback)');
     return true;
   } catch (error) {
     console.error('Database connection failed:', error);
@@ -87,5 +190,8 @@ export async function testConnection(): Promise<boolean> {
 
 // Close pool (for cleanup)
 export async function closePool(): Promise<void> {
-  await pool.end();
+  if (primaryPool) {
+    await primaryPool.end();
+  }
+  await fallbackPool.end();
 }

@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search');
 
-        let query = `
+    let query = `
           SELECT c.case_id as id, c.fir_no as fir_number, c.crime_type, c.case_status as status,
             c.case_priority as priority, c.summary as incident_description,
             c.fir_date_time as registered_date, c.incident_date_time as incident_date,
@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
     let firNo = data.fir_no;
     if (!firNo) {
       const stationId = parseInt(data.station_id);
-      const station = await queryOne(
+      const station = await queryOne<{ station_code: string }>(
         'SELECT station_code FROM police_stations WHERE id = ?',
         [stationId]
       );

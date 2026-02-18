@@ -550,6 +550,12 @@ Create a `.env.local` file in the project root:
 
 ```env
 # Database (PostgreSQL)
+# Preferred: online DB connection string
+DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/DBNAME
+# Optional: if your hosted provider requires SSL
+DB_SSL=true
+
+# Fallback: local DB connection settings
 DB_HOST=localhost
 DB_USER=postgres
 DB_PASSWORD=admin

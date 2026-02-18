@@ -15,16 +15,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('Received username:', username);
-    console.log('Received password:', password);
+    console.log('Login attempt for username:', username);
 
     // Find user
     const user = await queryOne<User>(
       'SELECT * FROM users WHERE username = ? AND is_active = TRUE',
       [username]
     );
-
-    console.log('Fetched user from database:', user);
 
     if (!user) {
       return NextResponse.json(

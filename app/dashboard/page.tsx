@@ -1,6 +1,6 @@
 import DashboardLayout from '@/components/DashboardLayout';
 import { getCurrentUser } from '@/lib/auth';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import AdminDashboard from '@/components/dashboards/AdminDashboard';
 import StationAdminDashboard from '@/components/dashboards/StationAdminDashboard';
 import OfficerDashboard from '@/components/dashboards/OfficerDashboard';
@@ -8,15 +8,24 @@ import OfficerDashboard from '@/components/dashboards/OfficerDashboard';
 async function getStats() {
   try {
     const cookieStore = await cookies();
-    const headers = { Cookie: cookieStore.toString() };
+    const cookieHeaders = { Cookie: cookieStore.toString() };
 
-    // Use an absolute URL for server-side fetches
-    // In production, this needs to be the actual deployment URL
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+    // Server-side fetch needs an absolute URL. On Vercel, derive it from request headers.
+    const h = await headers();
+    const host = h.get('x-forwarded-host') ?? h.get('host');
+    const proto = h.get('x-forwarded-proto') ?? 'http';
+    const vercelUrl = process.env.VERCEL_URL;
+    const origin = host
+      ? `${proto}://${host}`
+      : vercelUrl
+        ? `https://${vercelUrl}`
+        : 'http://localhost:3000';
 
-    const response = await fetch(`${baseUrl}/api/reports/stats`, {
+    const statsUrl = new URL('/api/reports/stats', origin).toString();
+
+    const response = await fetch(statsUrl, {
       cache: 'no-store',
-      headers: headers,
+      headers: cookieHeaders,
     });
 
     if (response.ok) {
@@ -36,15 +45,15 @@ export default async function DashboardPage() {
   const stats = await getStats();
 
   // If fetch fails (or no stats), provide a fallback structure to prevent UI crash
-  const safeStats = stats || { 
-    totalCases: 0, 
+  const safeStats = stats || {
+    totalCases: 0,
     totalStations: 0,
     totalOfficers: 0,
     totalUsers: 0,
-    casesByStatus: [], 
+    casesByStatus: [],
     casesByPriority: [],
     casesByCrimeType: [],
-    recentCases: [], 
+    recentCases: [],
     monthlyTrends: [],
     casesByDistrict: []
   };

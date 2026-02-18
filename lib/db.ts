@@ -20,6 +20,24 @@ const allowFallbackToLocal =
 let warnedNoPrimary = false;
 let warnedPrimaryFallback = false;
 
+function summarizeConnectionError(error: unknown): Record<string, unknown> {
+  if (typeof error !== 'object' || error === null) return { error };
+  const anyErr = error as Record<string, unknown>;
+
+  // Keep this intentionally minimal/safe (no connection string, no passwords)
+  return {
+    name: anyErr.name,
+    message: anyErr.message,
+    code: anyErr.code,
+    errno: anyErr.errno,
+    syscall: anyErr.syscall,
+    address: anyErr.address,
+    port: anyErr.port,
+    hostname: anyErr.hostname,
+    host: anyErr.host,
+  };
+}
+
 function isConnectionUnavailableError(error: unknown): boolean {
   const code: unknown =
     typeof error === 'object' && error !== null && 'code' in error
@@ -131,9 +149,15 @@ export async function executeQuery<T = unknown>(
       } catch (error) {
         if (isConnectionUnavailableError(error)) {
           if (!allowFallbackToLocal) {
-            throw new Error(
-              'Primary database is unreachable and fallback is disabled in production. Check DATABASE_URL and network access from your hosting provider.'
-            );
+            const details = summarizeConnectionError(error);
+            console.error('Primary database connection unavailable:', details);
+
+            const message =
+              'Primary database is unreachable and fallback is disabled in production. ' +
+              'Check DATABASE_URL (no quotes/extra text) and network access from your hosting provider.';
+
+            // Preserve the underlying cause where supported (Node >=16.9)
+            throw new Error(message, { cause: error as any });
           }
 
           if (!warnedPrimaryFallback) {

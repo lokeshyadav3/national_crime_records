@@ -567,12 +567,12 @@ export async function generateFIRReport(data: ReportData) {
   // ══════════════════════════════════════════════════════
   if (trackingRecords && trackingRecords.length > 0) {
     sectionTitle(`Case Timeline / Actions Taken (${trackingRecords.length})`);
-    const trackRows = trackingRecords.map((t, idx) => [
+    const trackRows = trackingRecords.map((t: any, idx: number) => [
       String(idx + 1),
       formatDateTime(t.track_date_time),
       t.action_type || 'N/A',
-      (t.action_description || 'N/A').substring(0, 55),
-      t.old_status && t.new_status ? `${t.old_status} → ${t.new_status}` : '-',
+      (t.action_description || 'N/A').substring(0, 80),
+      t.old_status && t.new_status ? `${t.old_status} >> ${t.new_status}` : (t.new_status || '-'),
     ]);
     checkPage(25);
     autoTable(doc, {

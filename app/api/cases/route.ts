@@ -16,6 +16,7 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search');
+    const stationIdParam = searchParams.get('station_id');
 
     let query = `
           SELECT c.case_id as id, c.fir_no as fir_number, c.crime_type, c.case_status as status,
@@ -34,6 +35,19 @@ export async function GET(request: NextRequest) {
     if (user.role !== 'Admin' && user.station_id) {
       query += ' AND c.station_id = ?';
       params.push(user.station_id);
+    }
+
+    // Filter by station_id query parameter (e.g. from station detail page)
+    if (stationIdParam) {
+      query += ' AND c.station_id = ?';
+      params.push(parseInt(stationIdParam));
+    }
+
+    // Filter by officer_id query parameter (e.g. from officer detail page)
+    const officerIdParam = searchParams.get('officer_id');
+    if (officerIdParam) {
+      query += ' AND c.officer_id = ?';
+      params.push(parseInt(officerIdParam));
     }
 
     // Only support search by exact FIR number (FIR numbers are unique)

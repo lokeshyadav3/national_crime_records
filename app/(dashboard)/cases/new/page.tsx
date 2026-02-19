@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useUser } from '@/lib/UserContext';
 
 interface PersonToAdd {
   id?: number;
@@ -27,6 +28,7 @@ interface EvidenceToAdd {
 export default function NewCasePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { user } = useUser();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -197,9 +199,17 @@ export default function NewCasePage() {
   useEffect(() => {
     fetch("/api/stations")
       .then(res => res.json())
-      .then(data => { if (data.success) setStations(data.data); })
+      .then(data => {
+        if (data.success) {
+          setStations(data.data);
+          // Auto-set station for Officer and StationAdmin
+          if (user && user.station_id && (user.role === 'Officer' || user.role === 'StationAdmin')) {
+            setForm(prev => ({ ...prev, station_id: String(user.station_id) }));
+          }
+        }
+      })
       .catch(err => console.error(err));
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     if (!form.station_id) {
@@ -217,7 +227,13 @@ export default function NewCasePage() {
     })
       .then(res => res.json())
       .then(data => {
-        if (data.success) setOfficers(data.data || []);
+        if (data.success) {
+          setOfficers(data.data || []);
+          // Auto-select the officer if the logged-in user is an Officer
+          if (user && user.officer_id && user.role === 'Officer') {
+            setForm(prev => ({ ...prev, officer_id: String(user.officer_id) }));
+          }
+        }
         else setOfficers([]);
       })
       .catch(err => {
@@ -226,7 +242,7 @@ export default function NewCasePage() {
       });
 
     return () => controller.abort();
-  }, [form.station_id]);
+  }, [form.station_id, user]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -459,17 +475,37 @@ export default function NewCasePage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-slate-700 text-sm font-medium mb-2">Police Station *</label>
-                  <select name="station_id" value={form.station_id} onChange={handleChange} className={selectBase} required>
+                  <select
+                    name="station_id"
+                    value={form.station_id}
+                    onChange={handleChange}
+                    className={selectBase + ((user && user.station_id && user.role !== 'Admin') ? ' opacity-70 cursor-not-allowed' : '')}
+                    disabled={!!(user && user.station_id && user.role !== 'Admin')}
+                    required
+                  >
                     <option value="" className="text-[#1e3a5f]">Select Station</option>
                     {stations.map(s => <option key={s.id} value={s.id} className="text-[#1e3a5f]">{s.station_name}</option>)}
                   </select>
+                  {user && user.station_id && user.role !== 'Admin' && (
+                    <p className="text-xs text-slate-500 mt-1">Auto-assigned to your station</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-slate-700 text-sm font-medium mb-2">Registering Officer *</label>
-                  <select name="officer_id" value={form.officer_id} onChange={handleChange} className={selectBase} disabled={!form.station_id} required>
+                  <select
+                    name="officer_id"
+                    value={form.officer_id}
+                    onChange={handleChange}
+                    className={selectBase + ((user && user.officer_id && user.role === 'Officer') ? ' opacity-70 cursor-not-allowed' : '')}
+                    disabled={!form.station_id || !!(user && user.officer_id && user.role === 'Officer')}
+                    required
+                  >
                     <option value="" className="text-[#1e3a5f]">{form.station_id ? 'Select Officer' : 'Select Station First'}</option>
                     {officers.map(o => <option key={o.id} value={o.id} className="text-[#1e3a5f]">{o.first_name} {o.last_name} ({o.rank})</option>)}
                   </select>
+                  {user && user.officer_id && user.role === 'Officer' && (
+                    <p className="text-xs text-slate-500 mt-1">Auto-assigned as registering officer</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-slate-700 text-sm font-medium mb-2">Crime Type *</label>

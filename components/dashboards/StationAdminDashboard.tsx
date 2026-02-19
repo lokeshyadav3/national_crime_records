@@ -69,25 +69,21 @@ export default function StationAdminDashboard({ user, stats }: DashboardProps) {
   const [mapStatusFilter, setMapStatusFilter] = useState('all');
 
   useEffect(() => {
-    if (user.station_id) {
-      // Fetch station details
-      fetch(`/api/stations/${user.station_id}`)
-        .then(res => res.json())
-        .then(data => {
-          if (data.success) setStation(data.data);
-        })
-        .catch(err => console.error('Failed to load station:', err))
-        .finally(() => setLoadingStation(false));
+    if (!user.station_id) return;
 
-      // Fetch officers at this station
-      fetch(`/api/officers?station_id=${user.station_id}`)
-        .then(res => res.json())
-        .then(data => {
-          if (data.success) setOfficers(data.data || []);
-        })
-        .catch(err => console.error('Failed to load officers:', err))
-        .finally(() => setLoadingOfficers(false));
-    }
+    Promise.all([
+      fetch(`/api/stations/${user.station_id}`).then(res => res.json()),
+      fetch(`/api/officers?station_id=${user.station_id}`).then(res => res.json()),
+    ])
+      .then(([stationData, officersData]) => {
+        if (stationData.success) setStation(stationData.data);
+        if (officersData.success) setOfficers(officersData.data || []);
+      })
+      .catch(err => console.error('Failed to load station data:', err))
+      .finally(() => {
+        setLoadingStation(false);
+        setLoadingOfficers(false);
+      });
   }, [user.station_id]);
 
   return (
@@ -399,9 +395,9 @@ export default function StationAdminDashboard({ user, stats }: DashboardProps) {
                   </td>
                   <td className="px-6 py-4">
                     <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${caseItem.priority === 'Critical' ? 'bg-red-100 text-red-700' :
-                        caseItem.priority === 'High' ? 'bg-orange-100 text-orange-700' :
-                          caseItem.priority === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
-                            'bg-green-100 text-green-700'
+                      caseItem.priority === 'High' ? 'bg-orange-100 text-orange-700' :
+                        caseItem.priority === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
+                          'bg-green-100 text-green-700'
                       }`}>
                       {caseItem.priority}
                     </span>

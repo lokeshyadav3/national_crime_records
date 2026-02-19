@@ -44,11 +44,16 @@ export default function UsersPage() {
   const shouldShowList = search.trim() !== '' || roleFilter !== '';
 
   useEffect(() => {
-    if (shouldShowList) {
-      fetchUsers();
-    } else {
+    if (!shouldShowList) {
       setUsers([]);
+      return;
     }
+
+    const debounce = setTimeout(() => {
+      fetchUsers();
+    }, 400);
+
+    return () => clearTimeout(debounce);
   }, [search, roleFilter]);
 
   // Auto-hide toast after 5 seconds
@@ -469,10 +474,10 @@ export default function UsersPage() {
         <div className="fixed top-4 right-4 z-50 animate-slide-in-right">
           <div
             className={`flex items-center gap-3 px-6 py-4 rounded-xl shadow-2xl border-2 min-w-[320px] max-w-md ${toast.type === 'success'
-                ? 'bg-green-50 border-green-200 text-green-800'
-                : toast.type === 'error'
-                  ? 'bg-red-50 border-red-200 text-red-800'
-                  : 'bg-blue-50 border-blue-200 text-blue-800'
+              ? 'bg-green-50 border-green-200 text-green-800'
+              : toast.type === 'error'
+                ? 'bg-red-50 border-red-200 text-red-800'
+                : 'bg-blue-50 border-blue-200 text-blue-800'
               }`}
           >
             {/* Icon */}
@@ -507,10 +512,10 @@ export default function UsersPage() {
             <button
               onClick={() => setToast({ ...toast, show: false })}
               className={`flex-shrink-0 p-1 rounded-lg transition-colors ${toast.type === 'success'
-                  ? 'hover:bg-green-100'
-                  : toast.type === 'error'
-                    ? 'hover:bg-red-100'
-                    : 'hover:bg-blue-100'
+                ? 'hover:bg-green-100'
+                : toast.type === 'error'
+                  ? 'hover:bg-red-100'
+                  : 'hover:bg-blue-100'
                 }`}
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

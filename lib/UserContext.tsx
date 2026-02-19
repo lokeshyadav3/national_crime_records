@@ -10,11 +10,19 @@ interface UserContextType {
 
 const UserContext = createContext<UserContextType>({ user: null, loading: true });
 
-export function UserProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<SessionUser | null>(null);
-  const [loading, setLoading] = useState(true);
+interface UserProviderProps {
+  children: ReactNode;
+  initialUser?: SessionUser | null;
+}
+
+export function UserProvider({ children, initialUser }: UserProviderProps) {
+  const [user, setUser] = useState<SessionUser | null>(initialUser ?? null);
+  const [loading, setLoading] = useState(!initialUser);
 
   useEffect(() => {
+    // Skip fetch if we already have the user from server
+    if (initialUser) return;
+
     const fetchUser = async () => {
       try {
         const res = await fetch('/api/auth/me');
@@ -30,7 +38,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
     };
 
     fetchUser();
-  }, []);
+  }, [initialUser]);
 
   return (
     <UserContext.Provider value={{ user, loading }}>

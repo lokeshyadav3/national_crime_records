@@ -1,4 +1,3 @@
-import DashboardLayout from '@/components/DashboardLayout';
 import { getCurrentUser } from '@/lib/auth';
 import { cookies, headers } from 'next/headers';
 import AdminDashboard from '@/components/dashboards/AdminDashboard';
@@ -59,11 +58,11 @@ export default async function DashboardPage() {
   };
 
   if (!user) {
-    return <div>Unauthorized</div>; // Should be handled by middleware/layout, but safety first
+    return <div>Unauthorized</div>;
   }
 
   return (
-    <DashboardLayout>
+    <>
       {user.role === 'Admin' ? (
         <AdminDashboard user={user} stats={safeStats} />
       ) : user.role === 'StationAdmin' ? (
@@ -71,6 +70,7 @@ export default async function DashboardPage() {
       ) : (
         <OfficerDashboard user={user} stats={safeStats} />
       )}
-    </DashboardLayout>
+    </>
   );
 }
+

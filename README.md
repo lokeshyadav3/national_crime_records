@@ -106,31 +106,35 @@ national_crime_records/
 │   │   └── geojson/
 │   │       └── nepal/route.ts    # GET: Nepal districts GeoJSON data
 │   ├── login/page.tsx            # Login form
-│   ├── dashboard/page.tsx        # Role-specific dashboard
-│   ├── cases/
-│   │   ├── page.tsx              # Cases list (search/filter)
-│   │   ├── [id]/page.tsx         # Case detail (tabbed: People, Evidence, Timeline)
-│   │   └── new/page.tsx          # New FIR registration form
-│   ├── officers/
-│   │   ├── page.tsx              # Officers list
-│   │   ├── [id]/page.tsx         # Officer detail
-│   │   ├── [id]/edit/page.tsx    # Edit officer
-│   │   └── new/page.tsx          # New officer form
-│   ├── stations/
-│   │   ├── page.tsx              # Stations list
-│   │   ├── [id]/page.tsx         # Station detail
-│   │   ├── [id]/edit/page.tsx    # Edit station
-│   │   └── new/page.tsx          # New station form
-│   ├── persons/
-│   │   ├── page.tsx              # Persons list
-│   │   └── new/page.tsx          # New person form
-│   ├── evidence/
-│   │   └── new/page.tsx          # New evidence upload form
-│   └── users/
-│       ├── page.tsx              # Users management
-│       └── new/page.tsx          # New user form
+│   └── (dashboard)/              # Route group — shared layout for all authenticated pages
+│       ├── layout.tsx            # Shared auth check + UserProvider + Navbar (runs once)
+│       ├── dashboard/page.tsx    # Role-specific dashboard
+│       ├── cases/
+│       │   ├── page.tsx          # Cases list (search/filter)
+│       │   ├── [id]/page.tsx     # Case detail (tabbed: People, Evidence, Timeline)
+│       │   └── new/page.tsx      # New FIR registration form
+│       ├── officers/
+│       │   ├── page.tsx          # Officers list
+│       │   ├── [id]/page.tsx     # Officer detail
+│       │   ├── [id]/edit/page.tsx # Edit officer
+│       │   └── new/page.tsx      # New officer form
+│       ├── stations/
+│       │   ├── page.tsx          # Stations list
+│       │   ├── [id]/page.tsx     # Station detail
+│       │   ├── [id]/edit/page.tsx # Edit station
+│       │   └── new/page.tsx      # New station form
+│       ├── persons/
+│       │   ├── page.tsx          # Persons list (cascading search)
+│       │   ├── [id]/page.tsx     # Person detail view (profile, associated cases)
+│       │   ├── [id]/edit/page.tsx # Edit person
+│       │   └── new/page.tsx      # New person form
+│       ├── evidence/
+│       │   └── new/page.tsx      # New evidence upload form
+│       └── users/
+│           ├── page.tsx          # Users management
+│           └── new/page.tsx      # New user form
 ├── components/                   # Reusable UI components
-│   ├── DashboardLayout.tsx       # Auth check wrapper + UserProvider + Navbar
+│   ├── DashboardLayout.tsx       # Legacy wrapper (kept for reference; replaced by route group layout)
 │   ├── Navbar.tsx                # Navigation bar with role-based links
 │   ├── SignaturePad.tsx          # Signature capture component
 │   ├── cases/
@@ -154,7 +158,7 @@ national_crime_records/
 │   ├── generateFIRReport.ts      # FIR PDF report generator
 │   ├── permissions.ts            # Role-based permission definitions
 │   ├── types.ts                  # TypeScript type definitions
-│   └── UserContext.tsx           # React context for current user
+│   └── UserContext.tsx           # React context for current user (accepts initialUser from server)
 ├── database/                     # SQL files
 │   ├── schema.sql                # Table definitions
 │   ├── seed_complete.sql         # Full seed data
@@ -381,10 +385,14 @@ reports.generate
                           ├── /stations ──→ /stations/:id
                           │                 /stations/:id/edit
                           │                 /stations/new
-                          ├── /persons  ──→ /persons/new
+                          ├── /persons  ──→ /persons/:id (detail)
+                          │                 /persons/:id/edit
+                          │                 /persons/new
                           ├── /evidence ──→ /evidence/new
                           └── /users    ──→ /users/new
 ```
+
+> **Note:** All authenticated routes (`/dashboard`, `/cases`, `/officers`, `/stations`, `/persons`, `/evidence`, `/users`) share a single `(dashboard)` route group layout. This means the Navbar, auth check, and `UserProvider` mount **once** and persist across all navigations — no re-rendering or redundant API calls when switching between sections.
 
 ### Page Descriptions
 
@@ -403,7 +411,9 @@ reports.generate
 | `/stations/:id` | Station detail — info, location, officers, and cases |
 | `/stations/:id/edit` | Edit station details |
 | `/stations/new` | Create new station with province → district → municipality cascade |
-| `/persons` | Searchable persons list |
+| `/persons` | Searchable persons list with cascading search |
+| `/persons/:id` | Person detail view — personal info, contact/address, photo/signature, quick stats, and associated cases table |
+| `/persons/:id/edit` | Edit person details (StationAdmin/Officer only) |
 | `/persons/new` | Create new person record |
 | `/evidence/new` | Upload evidence with file preview, case association |
 | `/users` | User management — list, delete, reset passwords |
@@ -417,7 +427,8 @@ reports.generate
 
 | Component | Purpose |
 |-----------|---------|
-| `DashboardLayout` | Server component — validates authentication, wraps children in `UserProvider` + `Navbar`. Redirects to `/login` if not authenticated |
+| `(dashboard)/layout.tsx` | **Route group layout** — single shared server component for all authenticated pages. Validates authentication via `getCurrentUser()`, wraps children in `UserProvider` (with `initialUser` from server) + `Navbar`. Redirects to `/login` if not authenticated. Mounts once and persists across all navigations, preventing redundant auth checks |
+| `DashboardLayout` | Legacy server component (kept for reference). Previously used per-section; now replaced by the route group layout |
 | `Navbar` | Client-side navigation bar with role-based link visibility, active route highlighting, mobile-responsive menu, and logout |
 
 ### Case Detail Components
@@ -464,7 +475,7 @@ reports.generate
 | **FIR Report** | [lib/generateFIRReport.ts](lib/generateFIRReport.ts) | Generates multi-page FIR PDF using `jsPDF` + `jspdf-autotable`. Includes 10 numbered sections with person photos, evidence listings, and 3-column signature block |
 | **Permissions** | [lib/permissions.ts](lib/permissions.ts) | Defines `rolePermissions` matrix for Admin/StationAdmin/Officer roles. Provides `hasPermission()` and `getRolePermissions()` |
 | **Types** | [lib/types.ts](lib/types.ts) | TypeScript interfaces and type definitions for all entities (User, Officer, Case, Person, Evidence, etc.) |
-| **User Context** | [lib/UserContext.tsx](lib/UserContext.tsx) | React context provider (`UserProvider`) and hook (`useUser()`) for accessing the current authenticated user on the client side |
+| **User Context** | [lib/UserContext.tsx](lib/UserContext.tsx) | React context provider (`UserProvider`) and hook (`useUser()`). Accepts an optional `initialUser` prop from the server layout to avoid redundant client-side `/api/auth/me` fetches. Falls back to API call if no initial user is provided |
 
 ---
 

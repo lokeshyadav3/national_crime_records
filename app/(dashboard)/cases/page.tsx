@@ -18,7 +18,7 @@ export default function CasesPage() {
     if (!searchQuery.trim()) {
       return; // Don't fetch if search is empty
     }
-    
+
     setLoading(true);
     setHasSearched(true);
     try {
@@ -167,18 +167,18 @@ export default function CasesPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${caseItem.status === 'Registered' ? 'bg-blue-100 text-blue-700 border border-blue-200' :
-                          caseItem.status === 'Under Investigation' ? 'bg-yellow-100 text-yellow-700 border border-yellow-200' :
-                            caseItem.status === 'Closed' ? 'bg-green-100 text-green-700 border border-green-200' :
-                              'bg-gray-100 text-gray-700 border border-gray-200'
+                        caseItem.status === 'Under Investigation' ? 'bg-yellow-100 text-yellow-700 border border-yellow-200' :
+                          caseItem.status === 'Closed' ? 'bg-green-100 text-green-700 border border-green-200' :
+                            'bg-gray-100 text-gray-700 border border-gray-200'
                         }`}>
                         {caseItem.status}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${caseItem.priority === 'Critical' ? 'bg-red-100 text-red-700 border border-red-200' :
-                          caseItem.priority === 'High' ? 'bg-orange-100 text-orange-700 border border-orange-200' :
-                            caseItem.priority === 'Medium' ? 'bg-yellow-100 text-yellow-700 border border-yellow-200' :
-                              'bg-green-100 text-green-700 border border-green-200'
+                        caseItem.priority === 'High' ? 'bg-orange-100 text-orange-700 border border-orange-200' :
+                          caseItem.priority === 'Medium' ? 'bg-yellow-100 text-yellow-700 border border-yellow-200' :
+                            'bg-green-100 text-green-700 border border-green-200'
                         }`}>
                         {caseItem.priority}
                       </span>
@@ -187,22 +187,12 @@ export default function CasesPage() {
                       {new Date(caseItem.incident_date).toLocaleDateString()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex items-center gap-2">
-                        <Link
-                          href={`/cases/${caseItem.id}`}
-                          className="px-3 py-1 bg-white border border-slate-200 rounded-md text-sm text-[#0c2340] hover:bg-slate-50 transition-colors"
-                        >
-                          View
-                        </Link>
-                        {canModifyFIR && (
-                          <Link
-                            href={`/cases/${caseItem.id}/edit`}
-                            className="px-3 py-1 bg-white border border-green-200 rounded-md text-sm text-green-600 hover:bg-green-50 transition-colors"
-                          >
-                            Edit
-                          </Link>
-                        )}
-                      </div>
+                      <Link
+                        href={`/cases/${caseItem.id}`}
+                        className="px-3 py-1 bg-white border border-slate-200 rounded-md text-sm text-[#0c2340] hover:bg-slate-50 transition-colors"
+                      >
+                        View
+                      </Link>
                     </td>
                   </tr>
                 ))}

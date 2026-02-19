@@ -1,47 +1,110 @@
 import { getCurrentUser } from '@/lib/auth';
-import { cookies, headers } from 'next/headers';
+import { executeQuery } from '@/lib/db';
 import AdminDashboard from '@/components/dashboards/AdminDashboard';
 import StationAdminDashboard from '@/components/dashboards/StationAdminDashboard';
 import OfficerDashboard from '@/components/dashboards/OfficerDashboard';
 
-async function getStats() {
+async function getStats(user: { role: string; station_id?: number | null }) {
   try {
-    const cookieStore = await cookies();
-    const cookieHeaders = { Cookie: cookieStore.toString() };
+    let stationFilter = '';
+    const params: any[] = [];
 
-    // Server-side fetch needs an absolute URL. On Vercel, derive it from request headers.
-    const h = await headers();
-    const host = h.get('x-forwarded-host') ?? h.get('host');
-    const proto = h.get('x-forwarded-proto') ?? 'http';
-    const vercelUrl = process.env.VERCEL_URL;
-    const origin = host
-      ? `${proto}://${host}`
-      : vercelUrl
-        ? `https://${vercelUrl}`
-        : 'http://localhost:3000';
-
-    const statsUrl = new URL('/api/reports/stats', origin).toString();
-
-    const response = await fetch(statsUrl, {
-      cache: 'no-store',
-      headers: cookieHeaders,
-    });
-
-    if (response.ok) {
-      const data = await response.json();
-      return data.data;
-    } else {
-      console.error('Stats API returned:', response.status, await response.text());
+    if (user.role !== 'Admin' && user.station_id) {
+      stationFilter = 'WHERE station_id = $1';
+      params.push(user.station_id);
     }
+
+    // Run all queries in parallel
+    const [
+      totalCasesRes,
+      totalStationsRes,
+      totalOfficersRes,
+      totalUsersRes,
+      totalPersonsRes,
+      casesByStatus,
+      casesByPriority,
+      casesByCrimeType,
+      recentCases,
+      monthlyTrends,
+      casesByDistrict,
+    ] = await Promise.all([
+      executeQuery<any[]>(`SELECT COUNT(*) as count FROM cases ${stationFilter}`, params),
+      executeQuery<any[]>(`SELECT COUNT(*) as count FROM police_stations`, []),
+      executeQuery<any[]>(
+        user.role === 'Admin'
+          ? `SELECT COUNT(*) as count FROM officers`
+          : `SELECT COUNT(*) as count FROM officers WHERE station_id = $1`,
+        user.role === 'Admin' ? [] : [user.station_id]
+      ),
+      executeQuery<any[]>(`SELECT COUNT(*) as count FROM users`, []),
+      executeQuery<any[]>(`SELECT COUNT(*) as count FROM persons`, []),
+      executeQuery(
+        `SELECT case_status as status, COUNT(*) as count FROM cases ${stationFilter} GROUP BY case_status`,
+        params
+      ),
+      executeQuery(
+        `SELECT case_priority as priority, COUNT(*) as count FROM cases ${stationFilter} GROUP BY case_priority`,
+        params
+      ),
+      executeQuery(
+        `SELECT crime_type as type, COUNT(*) as count FROM cases ${stationFilter} GROUP BY crime_type ORDER BY count DESC`,
+        params
+      ),
+      executeQuery(
+        `SELECT c.case_id as id, c.fir_no as fir_number, c.crime_type, c.case_status as status, c.case_priority as priority,
+                c.fir_date_time as registered_date, s.station_name
+         FROM cases c LEFT JOIN police_stations s ON c.station_id = s.id
+         ${stationFilter ? 'WHERE c.station_id = $1' : ''}
+         ORDER BY c.fir_date_time DESC LIMIT 10`,
+        params
+      ),
+      executeQuery(
+        `SELECT TO_CHAR(created_at, 'YYYY-MM') as month, COUNT(*) as count
+         FROM cases WHERE created_at >= (NOW() - INTERVAL '6 months')
+         ${stationFilter ? 'AND station_id = $1' : ''}
+         GROUP BY month ORDER BY month DESC`,
+        params
+      ),
+      executeQuery(
+        `SELECT UPPER(incident_district) as district, COUNT(*) as total,
+           SUM(CASE WHEN case_status = 'Registered' THEN 1 ELSE 0 END) as registered,
+           SUM(CASE WHEN case_status = 'Under Investigation' THEN 1 ELSE 0 END) as under_investigation,
+           SUM(CASE WHEN case_status = 'Charge Sheet Filed' THEN 1 ELSE 0 END) as chargesheet,
+           SUM(CASE WHEN case_status = 'Closed' THEN 1 ELSE 0 END) as closed
+         FROM cases WHERE incident_district IS NOT NULL AND incident_district != ''
+         ${stationFilter ? 'AND station_id = $1' : ''}
+         GROUP BY UPPER(incident_district) ORDER BY total DESC`,
+        params
+      ),
+    ]);
+
+    return {
+      totalCases: parseInt(totalCasesRes[0]?.count || 0),
+      totalStations: parseInt(totalStationsRes[0]?.count || 0),
+      totalOfficers: parseInt(totalOfficersRes[0]?.count || 0),
+      totalUsers: parseInt(totalUsersRes[0]?.count || 0),
+      totalPersons: parseInt(totalPersonsRes[0]?.count || 0),
+      casesByStatus,
+      casesByPriority,
+      casesByCrimeType,
+      recentCases,
+      monthlyTrends,
+      casesByDistrict,
+    };
   } catch (error) {
     console.error('Failed to fetch stats:', error);
+    return null;
   }
-  return null;
 }
 
 export default async function DashboardPage() {
   const user = await getCurrentUser();
-  const stats = await getStats();
+
+  if (!user) {
+    return <div>Unauthorized</div>;
+  }
+
+  const stats = await getStats(user);
 
   // If fetch fails (or no stats), provide a fallback structure to prevent UI crash
   const safeStats = stats || {
@@ -57,10 +120,6 @@ export default async function DashboardPage() {
     casesByDistrict: []
   };
 
-  if (!user) {
-    return <div>Unauthorized</div>;
-  }
-
   return (
     <>
       {user.role === 'Admin' ? (
@@ -73,4 +132,3 @@ export default async function DashboardPage() {
     </>
   );
 }
-

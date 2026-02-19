@@ -197,13 +197,23 @@ export default function NewCasePage() {
   };
 
   useEffect(() => {
-    fetch("/api/stations")
+    if (!user) return;
+
+    // Officers & StationAdmins only need their own station (dropdown is disabled)
+    // Admins need all stations to pick from
+    const stationUrl = (user.station_id && user.role !== 'Admin')
+      ? `/api/stations/${user.station_id}`
+      : '/api/stations';
+
+    fetch(stationUrl)
       .then(res => res.json())
       .then(data => {
         if (data.success) {
-          setStations(data.data);
+          // Single station returns an object, all stations returns an array
+          const stationList = Array.isArray(data.data) ? data.data : [data.data];
+          setStations(stationList);
           // Auto-set station for Officer and StationAdmin
-          if (user && user.station_id && (user.role === 'Officer' || user.role === 'StationAdmin')) {
+          if (user.station_id && user.role !== 'Admin') {
             setForm(prev => ({ ...prev, station_id: String(user.station_id) }));
           }
         }

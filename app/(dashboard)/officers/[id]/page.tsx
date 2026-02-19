@@ -18,37 +18,25 @@ export default function OfficerDetailPage() {
   const canModify = user?.role === 'Admin';
 
   useEffect(() => {
-    if (params.id) {
-      fetchOfficer();
-      fetchCases();
-    }
+    if (!params.id) return;
+
+    Promise.all([
+      fetch(`/api/officers/${params.id}`).then(res => res.json()),
+      fetch(`/api/cases?officer_id=${params.id}`).then(res => res.json()),
+    ])
+      .then(([officerData, casesData]) => {
+        if (officerData.success) {
+          setOfficer(officerData.data);
+        }
+        if (casesData.success) {
+          setCases(casesData.data || []);
+        }
+      })
+      .catch(error => {
+        console.error('Failed to fetch officer details:', error);
+      })
+      .finally(() => setLoading(false));
   }, [params.id]);
-
-  const fetchOfficer = async () => {
-    try {
-      const response = await fetch(`/api/officers/${params.id}`);
-      const data = await response.json();
-      if (data.success) {
-        setOfficer(data.data);
-      }
-    } catch (error) {
-      console.error('Failed to fetch officer:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchCases = async () => {
-    try {
-      const response = await fetch(`/api/cases?officer_id=${params.id}`);
-      const data = await response.json();
-      if (data.success) {
-        setCases(data.data || []);
-      }
-    } catch (error) {
-      console.error('Failed to fetch cases:', error);
-    }
-  };
 
   if (loading) {
     return (
@@ -180,8 +168,8 @@ export default function OfficerDetailPage() {
             <button
               onClick={() => setActiveTab('overview')}
               className={`px-6 py-4 text-sm font-medium transition-colors relative ${activeTab === 'overview'
-                  ? 'text-[#0c2340]'
-                  : 'text-slate-500 hover:text-[#0c2340]'
+                ? 'text-[#0c2340]'
+                : 'text-slate-500 hover:text-[#0c2340]'
                 }`}
             >
               Overview
@@ -192,8 +180,8 @@ export default function OfficerDetailPage() {
             <button
               onClick={() => setActiveTab('cases')}
               className={`px-6 py-4 text-sm font-medium transition-colors relative ${activeTab === 'cases'
-                  ? 'text-[#0c2340]'
-                  : 'text-slate-500 hover:text-[#0c2340]'
+                ? 'text-[#0c2340]'
+                : 'text-slate-500 hover:text-[#0c2340]'
                 }`}
             >
               Assigned Cases ({cases.length})
@@ -389,12 +377,12 @@ export default function OfficerDetailPage() {
                   >
                     <div className="flex items-start gap-4">
                       <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${caseItem.status === 'Closed' ? 'bg-green-100' :
-                          caseItem.status === 'Under Investigation' ? 'bg-blue-100' :
-                            'bg-yellow-100'
+                        caseItem.status === 'Under Investigation' ? 'bg-blue-100' :
+                          'bg-yellow-100'
                         }`}>
                         <svg className={`w-5 h-5 ${caseItem.status === 'Closed' ? 'text-green-600' :
-                            caseItem.status === 'Under Investigation' ? 'text-blue-600' :
-                              'text-yellow-600'
+                          caseItem.status === 'Under Investigation' ? 'text-blue-600' :
+                            'text-yellow-600'
                           }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
@@ -403,8 +391,8 @@ export default function OfficerDetailPage() {
                         <div className="flex items-center gap-2 mb-1">
                           <span className="text-xs font-mono text-[#d4a853]">{caseItem.fir_number}</span>
                           <span className={`px-2 py-0.5 text-xs rounded-full ${caseItem.status === 'Closed' ? 'bg-green-100 text-green-700' :
-                              caseItem.status === 'Under Investigation' ? 'bg-blue-100 text-blue-700' :
-                                'bg-yellow-100 text-yellow-700'
+                            caseItem.status === 'Under Investigation' ? 'bg-blue-100 text-blue-700' :
+                              'bg-yellow-100 text-yellow-700'
                             }`}>
                             {caseItem.status}
                           </span>
@@ -417,8 +405,8 @@ export default function OfficerDetailPage() {
                           <span>Filed: {new Date(caseItem.date_reported).toLocaleDateString()}</span>
                           {caseItem.priority && (
                             <span className={`px-2 py-0.5 rounded-full ${caseItem.priority === 'High' ? 'bg-red-50 text-red-600' :
-                                caseItem.priority === 'Medium' ? 'bg-orange-50 text-orange-600' :
-                                  'bg-gray-50 text-gray-600'
+                              caseItem.priority === 'Medium' ? 'bg-orange-50 text-orange-600' :
+                                'bg-gray-50 text-gray-600'
                               }`}>
                               {caseItem.priority} Priority
                             </span>

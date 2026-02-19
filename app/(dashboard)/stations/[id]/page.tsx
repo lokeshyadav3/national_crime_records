@@ -49,7 +49,7 @@ export default function StationDetailPage() {
   const params = useParams();
   const { user } = useUser();
   const stationId = params.id;
-  
+
   const [station, setStation] = useState<Station | null>(null);
   const [officers, setOfficers] = useState<Officer[]>([]);
   const [cases, setCases] = useState<Case[]>([]);
@@ -62,54 +62,33 @@ export default function StationDetailPage() {
   const canModify = user?.role === 'Admin';
 
   useEffect(() => {
-    if (stationId) {
-      fetchStationDetails();
-      fetchOfficers();
-      fetchCases();
-    }
+    if (!stationId) return;
+
+    Promise.all([
+      fetch(`/api/stations/${stationId}`).then(res => res.json()),
+      fetch(`/api/officers?station_id=${stationId}`).then(res => res.json()),
+      fetch(`/api/cases?station_id=${stationId}`).then(res => res.json()),
+    ])
+      .then(([stationData, officersData, casesData]) => {
+        if (stationData.success) {
+          setStation(stationData.data);
+        }
+        if (officersData.success) {
+          setOfficers(officersData.data);
+        }
+        if (casesData.success) {
+          setCases(casesData.data);
+        }
+      })
+      .catch(error => {
+        console.error('Failed to fetch station details:', error);
+      })
+      .finally(() => setLoading(false));
   }, [stationId]);
-
-  const fetchStationDetails = async () => {
-    try {
-      const res = await fetch(`/api/stations/${stationId}`);
-      const data = await res.json();
-      if (data.success) {
-        setStation(data.data);
-      }
-    } catch (error) {
-      console.error('Failed to fetch station:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchOfficers = async () => {
-    try {
-      const res = await fetch(`/api/officers?station_id=${stationId}`);
-      const data = await res.json();
-      if (data.success) {
-        setOfficers(data.data);
-      }
-    } catch (error) {
-      console.error('Failed to fetch officers:', error);
-    }
-  };
-
-  const fetchCases = async () => {
-    try {
-      const res = await fetch(`/api/cases?station_id=${stationId}`);
-      const data = await res.json();
-      if (data.success) {
-        setCases(data.data);
-      }
-    } catch (error) {
-      console.error('Failed to fetch cases:', error);
-    }
-  };
 
   const filteredCases = cases.filter(c => {
     const matchesFilter = caseFilter === 'all' || c.case_status === caseFilter;
-    const matchesSearch = !caseSearch || 
+    const matchesSearch = !caseSearch ||
       c.fir_number.toLowerCase().includes(caseSearch.toLowerCase()) ||
       c.crime_type.toLowerCase().includes(caseSearch.toLowerCase());
     return matchesFilter && matchesSearch;
@@ -162,8 +141,8 @@ export default function StationDetailPage() {
         {/* Station Photo - Rectangular Banner */}
         <div className="relative h-48 bg-gradient-to-r from-[#0c2340] to-[#1e3a5f]">
           {station.photo ? (
-            <img 
-              src={station.photo} 
+            <img
+              src={station.photo}
               alt={station.station_name}
               className="w-full h-full object-cover opacity-80"
             />
@@ -222,11 +201,10 @@ export default function StationDetailPage() {
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors capitalize ${
-                  activeTab === tab
+                className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors capitalize ${activeTab === tab
                     ? 'border-[#0c2340] text-[#0c2340]'
                     : 'border-transparent text-slate-500 hover:text-[#0c2340] hover:border-slate-300'
-                }`}
+                  }`}
               >
                 {tab} {tab === 'officers' && `(${officers.length})`} {tab === 'cases' && `(${cases.length})`}
               </button>
@@ -302,7 +280,7 @@ export default function StationDetailPage() {
                     <div>
                       <div className="font-semibold text-[#0c2340]">{station.incharge_name}</div>
                       <div className="text-sm text-slate-500">{station.incharge_rank}</div>
-                      <Link 
+                      <Link
                         href={`/officers/${station.incharge_officer_id}`}
                         className="text-xs text-[#0c2340] hover:underline mt-1 inline-block"
                       >
@@ -347,16 +325,16 @@ export default function StationDetailPage() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {officers.map((officer) => (
-                    <Link 
-                      key={officer.id} 
+                    <Link
+                      key={officer.id}
                       href={`/officers/${officer.id}`}
                       className="bg-slate-50 hover:bg-slate-100 rounded-xl p-4 transition-colors flex items-center gap-4"
                     >
                       {/* Circular Officer Photo */}
                       <div className="relative flex-shrink-0">
                         {officer.photo ? (
-                          <img 
-                            src={officer.photo} 
+                          <img
+                            src={officer.photo}
                             alt={`${officer.first_name} ${officer.last_name}`}
                             className="w-16 h-16 rounded-full object-cover border-2 border-white shadow-md"
                           />
@@ -365,11 +343,10 @@ export default function StationDetailPage() {
                             {officer.first_name?.charAt(0)}{officer.last_name?.charAt(0)}
                           </div>
                         )}
-                        <span className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white ${
-                          officer.service_status === 'Active' ? 'bg-green-500' :
-                          officer.service_status === 'Suspended' ? 'bg-red-500' :
-                          'bg-gray-400'
-                        }`}></span>
+                        <span className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white ${officer.service_status === 'Active' ? 'bg-green-500' :
+                            officer.service_status === 'Suspended' ? 'bg-red-500' :
+                              'bg-gray-400'
+                          }`}></span>
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="font-semibold text-[#0c2340] truncate">
@@ -412,11 +389,10 @@ export default function StationDetailPage() {
                     <button
                       key={status}
                       onClick={() => setCaseFilter(status)}
-                      className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
-                        caseFilter === status
+                      className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${caseFilter === status
                           ? 'bg-[#0c2340] text-white'
                           : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                      }`}
+                        }`}
                     >
                       {status === 'all' ? 'All' : status} ({count})
                     </button>
@@ -454,18 +430,16 @@ export default function StationDetailPage() {
                               {new Date(caseItem.registered_date).toLocaleDateString()}
                             </div>
                           </div>
-                          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                            caseItem.case_status === 'Registered' ? 'bg-blue-100 text-blue-700' :
-                            caseItem.case_status === 'Under Investigation' ? 'bg-yellow-100 text-yellow-700' :
-                            caseItem.case_status === 'Closed' ? 'bg-green-100 text-green-700' :
-                            'bg-slate-100 text-slate-700'
-                          }`}>
+                          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${caseItem.case_status === 'Registered' ? 'bg-blue-100 text-blue-700' :
+                              caseItem.case_status === 'Under Investigation' ? 'bg-yellow-100 text-yellow-700' :
+                                caseItem.case_status === 'Closed' ? 'bg-green-100 text-green-700' :
+                                  'bg-slate-100 text-slate-700'
+                            }`}>
                             {caseItem.case_status}
                           </span>
                           {caseItem.priority === 'High' || caseItem.priority === 'Critical' ? (
-                            <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                              caseItem.priority === 'Critical' ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'
-                            }`}>
+                            <span className={`px-2 py-1 rounded-full text-xs font-semibold ${caseItem.priority === 'Critical' ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'
+                              }`}>
                               {caseItem.priority}
                             </span>
                           ) : null}

@@ -24,48 +24,43 @@ export default function PersonsPage() {
   const [persons, setPersons] = useState<PersonData[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
-  const [searched, setSearched] = useState(false);
   const [totalCount, setTotalCount] = useState(0);
+  const [hasSearched, setHasSearched] = useState(false);
 
   const canEdit = user?.role === 'StationAdmin' || user?.role === 'Officer';
   const canAdd = user?.role === 'StationAdmin' || user?.role === 'Officer';
 
-  async function fetchPersons(query?: string) {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams();
-      if (query) params.append('search', query);
+  // Cascading search — auto-fetch as user types with debounce
+  useEffect(() => {
+    if (!search.trim()) {
+      setPersons([]);
+      setTotalCount(0);
+      setHasSearched(false);
+      return;
+    }
 
-      const response = await fetch(`/api/persons?${params.toString()}`);
-      const data = await response.json();
-      if (data.success) {
-        setPersons(data.data || []);
-        setTotalCount(data.data?.length || 0);
+    const debounce = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const params = new URLSearchParams();
+        params.append('search', search.trim());
+
+        const response = await fetch(`/api/persons?${params.toString()}`);
+        const data = await response.json();
+        if (data.success) {
+          setPersons(data.data || []);
+          setTotalCount(data.data?.length || 0);
+        }
+      } catch (error) {
+        console.error('Failed to fetch persons:', error);
+      } finally {
+        setLoading(false);
+        setHasSearched(true);
       }
-    } catch (error) {
-      console.error('Failed to fetch persons:', error);
-    } finally {
-      setLoading(false);
-      setSearched(true);
-    }
-  }
+    }, 400);
 
-  function handleSearch() {
-    fetchPersons(search);
-  }
-
-  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === 'Enter') {
-      handleSearch();
-    }
-  }
-
-  function handleClear() {
-    setSearch('');
-    setPersons([]);
-    setSearched(false);
-    setTotalCount(0);
-  }
+    return () => clearTimeout(debounce);
+  }, [search]);
 
   if (userLoading) {
     return (
@@ -120,37 +115,17 @@ export default function PersonsPage() {
             <input
               type="text"
               id="person-search"
-              placeholder="Search by name, national ID, contact, or city..."
+              placeholder="Start typing to search by name, national ID, contact, or city..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              onKeyDown={handleKeyDown}
               className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-[#0c2340] placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0c2340]/30 focus:border-transparent transition-all duration-300 hover:bg-slate-50"
             />
           </div>
 
-          {/* Search Button */}
-          <button
-            onClick={handleSearch}
-            disabled={loading}
-            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#0c2340] to-[#1e3a5f] hover:from-[#1e3a5f] hover:to-[#2d4a6f] text-white rounded-xl font-medium transition-all duration-300 shadow-lg hover:scale-[1.02] disabled:opacity-50"
-          >
-            {loading ? (
-              <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-            ) : (
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            )}
-            Search
-          </button>
-
           {/* Clear */}
-          {searched && (
+          {search && (
             <button
-              onClick={handleClear}
+              onClick={() => setSearch('')}
               className="flex items-center gap-2 px-4 py-3 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-600 font-medium transition-all duration-300"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -162,12 +137,23 @@ export default function PersonsPage() {
         </div>
 
         {/* Results Count */}
-        {searched && (
+        {hasSearched && !loading && (
           <div className="mt-3 flex items-center gap-2 text-sm text-slate-500">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
             {`${totalCount} person${totalCount !== 1 ? 's' : ''} found`}
+          </div>
+        )}
+
+        {/* Loading indicator inline */}
+        {loading && (
+          <div className="mt-3 flex items-center gap-2 text-sm text-slate-500">
+            <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Searching...
           </div>
         )}
       </div>
@@ -186,31 +172,18 @@ export default function PersonsPage() {
       )}
 
       {/* Initial State - No Search Yet */}
-      {!searched && !loading && (
+      {!hasSearched && !loading && (
         <div className="bg-white rounded-3xl border border-slate-200 shadow-lg p-12 text-center">
           <svg className="w-20 h-20 mx-auto mb-4 text-slate-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
           <p className="text-slate-500 font-medium text-lg">Search for persons</p>
-          <p className="text-slate-400 text-sm mt-1">Enter a name, national ID, contact number, or city and click Search</p>
-        </div>
-      )}
-
-      {/* Loading State */}
-      {loading && (
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-lg p-8 text-center">
-          <div className="flex items-center justify-center gap-3 text-slate-500">
-            <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            Searching persons...
-          </div>
+          <p className="text-slate-400 text-sm mt-1">Start typing a name, national ID, contact number, or city to see results</p>
         </div>
       )}
 
       {/* Results */}
-      {searched && !loading && (
+      {hasSearched && !loading && (
         <div className="bg-white rounded-3xl border border-slate-200 shadow-lg overflow-hidden">
           {persons.length === 0 ? (
             <div className="p-12 text-center">

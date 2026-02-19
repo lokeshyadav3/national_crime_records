@@ -117,37 +117,6 @@ export default function AdminDashboard({ user, stats }: DashboardProps) {
                 </div>
             </div>
 
-            {/* Persons Stat */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-lg">
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-gradient-to-br from-[#0c2340] to-[#1e3a5f] rounded-2xl flex items-center justify-center shadow-lg">
-                            <svg className="w-6 h-6 text-[#d4a853]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-                            </svg>
-                        </div>
-                        <div>
-                            <div className="text-sm font-medium text-slate-500">Total Persons</div>
-                            <div className="text-3xl font-bold text-[#0c2340] mt-1">{stats?.totalPersons || 0}</div>
-                        </div>
-                    </div>
-                </div>
-                <Link href="/persons" className="bg-white rounded-3xl border border-slate-200 p-6 shadow-lg hover:shadow-xl transition-all duration-300 group">
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-gradient-to-br from-amber-400 to-amber-500 rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
-                            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                            </svg>
-                        </div>
-                        <div>
-                            <div className="text-sm font-medium text-slate-500">View All Persons</div>
-                            <div className="text-xs text-amber-600 mt-1 font-medium">View Only — Click to browse →</div>
-                        </div>
-                    </div>
-                </Link>
-            </div>
-
             {/* Admin Quick Actions */}
             <div className="bg-white rounded-3xl border border-slate-200 shadow-lg p-6">
                 <h2 className="text-lg font-semibold text-[#0c2340] mb-4">Administration</h2>

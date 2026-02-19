@@ -48,10 +48,20 @@ export async function GET(request: NextRequest) {
       params.push(stationId);
     }
 
-    // Search filter
+    // Search filter — case-insensitive, searches first/middle/last name individually and as full name
     if (search) {
-      conditions.push(`(p.first_name ILIKE ? OR p.last_name ILIKE ? OR p.national_id ILIKE ? OR p.contact_number ILIKE ? OR p.city ILIKE ?)`);
-      params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
+      const term = search.toLowerCase();
+      conditions.push(`(
+        LOWER(p.first_name) LIKE ? OR
+        LOWER(p.middle_name) LIKE ? OR
+        LOWER(p.last_name) LIKE ? OR
+        LOWER(CONCAT(p.first_name, ' ', COALESCE(p.middle_name, ''), ' ', p.last_name)) LIKE ? OR
+        LOWER(CONCAT(p.first_name, ' ', p.last_name)) LIKE ? OR
+        LOWER(p.national_id) LIKE ? OR
+        LOWER(p.contact_number) LIKE ? OR
+        LOWER(p.city) LIKE ?
+      )`);
+      params.push(`%${term}%`, `%${term}%`, `%${term}%`, `%${term}%`, `%${term}%`, `%${term}%`, `%${term}%`, `%${term}%`);
     }
 
     if (conditions.length > 0) {

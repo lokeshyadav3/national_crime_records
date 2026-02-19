@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useUser } from '@/lib/UserContext';
 
@@ -17,49 +17,24 @@ interface PersonData {
   email: string | null;
   photo: string | null;
   created_at: string;
-  station_names: string | null;
-  roles_in_cases: string | null;
-}
-
-interface StationOption {
-  id: number;
-  station_name: string;
 }
 
 export default function PersonsPage() {
   const { user, loading: userLoading } = useUser();
   const [persons, setPersons] = useState<PersonData[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
-  const [stationFilter, setStationFilter] = useState('');
-  const [stations, setStations] = useState<StationOption[]>([]);
+  const [searched, setSearched] = useState(false);
   const [totalCount, setTotalCount] = useState(0);
 
   const canEdit = user?.role === 'StationAdmin' || user?.role === 'Officer';
   const canAdd = user?.role === 'StationAdmin' || user?.role === 'Officer';
 
-  // Fetch stations for filter dropdown
-  useEffect(() => {
-    const fetchStations = async () => {
-      try {
-        const res = await fetch('/api/stations');
-        const data = await res.json();
-        if (data.success) {
-          setStations(data.data || []);
-        }
-      } catch (err) {
-        console.error('Failed to fetch stations:', err);
-      }
-    };
-    fetchStations();
-  }, []);
-
-  const fetchPersons = useCallback(async () => {
+  async function fetchPersons(query?: string) {
     setLoading(true);
     try {
       const params = new URLSearchParams();
-      if (search) params.append('search', search);
-      if (stationFilter) params.append('station_id', stationFilter);
+      if (query) params.append('search', query);
 
       const response = await fetch(`/api/persons?${params.toString()}`);
       const data = await response.json();
@@ -71,15 +46,26 @@ export default function PersonsPage() {
       console.error('Failed to fetch persons:', error);
     } finally {
       setLoading(false);
+      setSearched(true);
     }
-  }, [search, stationFilter]);
+  }
 
-  useEffect(() => {
-    const debounce = setTimeout(() => {
-      fetchPersons();
-    }, 300);
-    return () => clearTimeout(debounce);
-  }, [fetchPersons]);
+  function handleSearch() {
+    fetchPersons(search);
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Enter') {
+      handleSearch();
+    }
+  }
+
+  function handleClear() {
+    setSearch('');
+    setPersons([]);
+    setSearched(false);
+    setTotalCount(0);
+  }
 
   if (userLoading) {
     return (
@@ -121,7 +107,7 @@ export default function PersonsPage() {
         )}
       </div>
 
-      {/* Search & Filter Bar */}
+      {/* Search Bar */}
       <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-lg">
         <div className="flex flex-col md:flex-row gap-4">
           {/* Search Input */}
@@ -137,31 +123,34 @@ export default function PersonsPage() {
               placeholder="Search by name, national ID, contact, or city..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={handleKeyDown}
               className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-[#0c2340] placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0c2340]/30 focus:border-transparent transition-all duration-300 hover:bg-slate-50"
             />
           </div>
 
-          {/* Station Filter */}
-          <div className="md:w-72">
-            <select
-              id="station-filter"
-              value={stationFilter}
-              onChange={(e) => setStationFilter(e.target.value)}
-              className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-[#0c2340] focus:outline-none focus:ring-2 focus:ring-[#0c2340]/30 focus:border-transparent transition-all duration-300 hover:bg-slate-50 cursor-pointer appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2394a3b8%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E')] bg-[length:20px] bg-[right_12px_center] bg-no-repeat pr-10"
-            >
-              <option value="">All Police Stations</option>
-              {stations.map((station) => (
-                <option key={station.id} value={station.id}>
-                  {station.station_name}
-                </option>
-              ))}
-            </select>
-          </div>
+          {/* Search Button */}
+          <button
+            onClick={handleSearch}
+            disabled={loading}
+            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#0c2340] to-[#1e3a5f] hover:from-[#1e3a5f] hover:to-[#2d4a6f] text-white rounded-xl font-medium transition-all duration-300 shadow-lg hover:scale-[1.02] disabled:opacity-50"
+          >
+            {loading ? (
+              <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            ) : (
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            )}
+            Search
+          </button>
 
-          {/* Clear Filters */}
-          {(search || stationFilter) && (
+          {/* Clear */}
+          {searched && (
             <button
-              onClick={() => { setSearch(''); setStationFilter(''); }}
+              onClick={handleClear}
               className="flex items-center gap-2 px-4 py-3 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-600 font-medium transition-all duration-300"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -173,17 +162,14 @@ export default function PersonsPage() {
         </div>
 
         {/* Results Count */}
-        <div className="mt-3 flex items-center gap-2 text-sm text-slate-500">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-          {loading ? 'Searching...' : `${totalCount} person${totalCount !== 1 ? 's' : ''} found`}
-          {stationFilter && stations.find(s => s.id.toString() === stationFilter) && (
-            <span className="px-2 py-0.5 bg-[#0c2340]/10 text-[#0c2340] rounded-full text-xs font-medium">
-              {stations.find(s => s.id.toString() === stationFilter)?.station_name}
-            </span>
-          )}
-        </div>
+        {searched && (
+          <div className="mt-3 flex items-center gap-2 text-sm text-slate-500">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            {`${totalCount} person${totalCount !== 1 ? 's' : ''} found`}
+          </div>
+        )}
       </div>
 
       {/* Admin Info Banner */}
@@ -199,142 +185,145 @@ export default function PersonsPage() {
         </div>
       )}
 
-      {/* Persons Table */}
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-lg overflow-hidden">
-        {loading ? (
-          <div className="p-8 text-center">
-            <div className="flex items-center justify-center gap-3 text-slate-500">
-              <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              Loading persons...
-            </div>
-          </div>
-        ) : persons.length === 0 ? (
-          <div className="p-12 text-center">
-            <svg className="w-16 h-16 mx-auto mb-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+      {/* Initial State - No Search Yet */}
+      {!searched && !loading && (
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-lg p-12 text-center">
+          <svg className="w-20 h-20 mx-auto mb-4 text-slate-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <p className="text-slate-500 font-medium text-lg">Search for persons</p>
+          <p className="text-slate-400 text-sm mt-1">Enter a name, national ID, contact number, or city and click Search</p>
+        </div>
+      )}
+
+      {/* Loading State */}
+      {loading && (
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-lg p-8 text-center">
+          <div className="flex items-center justify-center gap-3 text-slate-500">
+            <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
-            <p className="text-slate-500 font-medium">No persons found</p>
-            <p className="text-slate-400 text-sm mt-1">
-              {search || stationFilter ? 'Try adjusting your search or filter criteria' : 'Add a new person to get started'}
-            </p>
-            {canAdd && !search && !stationFilter && (
-              <Link
-                href="/persons/new"
-                className="mt-4 inline-flex items-center gap-2 bg-gradient-to-r from-[#0c2340] to-[#1e3a5f] text-white px-5 py-2.5 rounded-xl font-medium transition-all duration-300 shadow-lg hover:scale-[1.02]"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                </svg>
-                Add New Person
-              </Link>
-            )}
+            Searching persons...
           </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full">
-              <thead className="bg-slate-50">
-                <tr>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
-                    Person
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
-                    Gender
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
-                    National ID
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
-                    Contact
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
-                    Location
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200">
-                {persons.map((person) => (
-                  <tr key={person.id} className="hover:bg-slate-50 transition-colors duration-200">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <Link
-                        href={`/persons/${person.id}`}
-                        className="text-sm font-medium text-[#0c2340] hover:text-[#1e3a5f] transition-colors flex items-center gap-3"
-                      >
-                        {person.photo ? (
-                          <img src={person.photo} alt="" className="w-9 h-9 rounded-lg object-cover border border-slate-200" />
-                        ) : (
-                          <div className="w-9 h-9 bg-gradient-to-br from-[#0c2340] to-[#1e3a5f] rounded-lg flex items-center justify-center text-white text-xs font-bold">
-                            {person.first_name.charAt(0)}{person.last_name.charAt(0)}
-                          </div>
-                        )}
-                        <div>
-                          <p className="font-medium">{person.first_name} {person.middle_name || ''} {person.last_name}</p>
-                          <p className="text-xs text-slate-400">{person.email || ''}</p>
-                        </div>
-                      </Link>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${person.gender === 'Male' ? 'bg-blue-500/20 text-[#1e3a5f] border border-blue-400/30' :
-                        person.gender === 'Female' ? 'bg-pink-100 text-pink-700 border border-pink-200' :
-                          'bg-purple-100 text-purple-700 border border-purple-200'
-                        }`}>
-                        {person.gender || 'N/A'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
-                      {person.national_id || (
-                        <span className="text-slate-300">N/A</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
-                      {person.contact_number || (
-                        <span className="text-slate-300">N/A</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
-                      {person.city || person.state ? (
-                        <span>{person.city}{person.city && person.state ? ', ' : ''}{person.state}</span>
-                      ) : (
-                        <span className="text-slate-300">N/A</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex items-center gap-2">
+        </div>
+      )}
+
+      {/* Results */}
+      {searched && !loading && (
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-lg overflow-hidden">
+          {persons.length === 0 ? (
+            <div className="p-12 text-center">
+              <svg className="w-16 h-16 mx-auto mb-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              <p className="text-slate-500 font-medium">No persons found</p>
+              <p className="text-slate-400 text-sm mt-1">Try adjusting your search criteria</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full">
+                <thead className="bg-slate-50">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
+                      Person
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
+                      Gender
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
+                      National ID
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
+                      Contact
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
+                      Location
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200">
+                  {persons.map((person) => (
+                    <tr key={person.id} className="hover:bg-slate-50 transition-colors duration-200">
+                      <td className="px-6 py-4 whitespace-nowrap">
                         <Link
                           href={`/persons/${person.id}`}
-                          className="text-[#0c2340] hover:text-[#1e3a5f] transition-colors flex items-center gap-1"
+                          className="text-sm font-medium text-[#0c2340] hover:text-[#1e3a5f] transition-colors flex items-center gap-3"
                         >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                          </svg>
-                          View
+                          {person.photo ? (
+                            <img src={person.photo} alt="" className="w-9 h-9 rounded-lg object-cover border border-slate-200" />
+                          ) : (
+                            <div className="w-9 h-9 bg-gradient-to-br from-[#0c2340] to-[#1e3a5f] rounded-lg flex items-center justify-center text-white text-xs font-bold">
+                              {person.first_name.charAt(0)}{person.last_name.charAt(0)}
+                            </div>
+                          )}
+                          <div>
+                            <p className="font-medium">{person.first_name} {person.middle_name || ''} {person.last_name}</p>
+                            <p className="text-xs text-slate-400">{person.email || ''}</p>
+                          </div>
                         </Link>
-                        {canEdit && (
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${person.gender === 'Male' ? 'bg-blue-500/20 text-[#1e3a5f] border border-blue-400/30' :
+                          person.gender === 'Female' ? 'bg-pink-100 text-pink-700 border border-pink-200' :
+                            'bg-purple-100 text-purple-700 border border-purple-200'
+                          }`}>
+                          {person.gender || 'N/A'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                        {person.national_id || (
+                          <span className="text-slate-300">N/A</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                        {person.contact_number || (
+                          <span className="text-slate-300">N/A</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                        {person.city || person.state ? (
+                          <span>{person.city}{person.city && person.state ? ', ' : ''}{person.state}</span>
+                        ) : (
+                          <span className="text-slate-300">N/A</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <div className="flex items-center gap-2">
                           <Link
-                            href={`/persons/${person.id}/edit`}
-                            className="text-amber-600 hover:text-amber-700 transition-colors flex items-center gap-1"
+                            href={`/persons/${person.id}`}
+                            className="text-[#0c2340] hover:text-[#1e3a5f] transition-colors flex items-center gap-1"
                           >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                             </svg>
-                            Edit
+                            View
                           </Link>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+                          {canEdit && (
+                            <Link
+                              href={`/persons/${person.id}/edit`}
+                              className="text-amber-600 hover:text-amber-700 transition-colors flex items-center gap-1"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              </svg>
+                              Edit
+                            </Link>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

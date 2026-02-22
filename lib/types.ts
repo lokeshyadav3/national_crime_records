@@ -144,24 +144,3 @@ export interface FIRTrackRecord {
   performed_by_user_id: number;
   action_date: Date;
 }
-
-// Extended types with joins
-export interface CaseWithDetails extends Case {
-  station_name?: string;
-  assigned_officer_name?: string;
-  registered_by_officer_name?: string;
-}
-
-export interface PersonWithRole extends Person {
-  role?: PersonRole;
-  statement?: string;
-}
-
-export interface EvidenceWithDetails extends Evidence {
-  collected_by_officer_name?: string;
-}
-
-export interface TrackRecordWithUser extends FIRTrackRecord {
-  performed_by_username?: string;
-  performed_by_role?: UserRole;
-}

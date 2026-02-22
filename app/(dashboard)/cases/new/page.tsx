@@ -556,7 +556,7 @@ export default function NewCasePage() {
             </div>
 
             <div className="pt-4 border-t border-slate-200 flex justify-end">
-              <button type="submit" disabled={loading} className="bg-gradient-to-r from-[#0c2340] to-[#1e3a5f] hover:from-[#1e3a5f] hover:to-[#2d4a6f] text-white font-bold py-3 px-8 rounded-xl shadow-lg transition-all disabled:opacity-50">
+              <button type="submit" disabled={loading} className="bg-[#0c2340] hover:bg-[#1e3a5f] text-white font-bold py-3 px-8 rounded-xl transition-all disabled:opacity-50">
                 {loading ? 'Registering...' : 'Continue to Add Persons →'}
               </button>
             </div>
@@ -567,7 +567,7 @@ export default function NewCasePage() {
         {step === 2 && (
           <div className="space-y-8">
             {/* COMPLAINANT SECTION */}
-            <div className="bg-gradient-to-r from-yellow-500/10 to-orange-500/10 p-6 rounded-2xl border border-yellow-200">
+            <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200">
               <h2 className="text-lg font-semibold text-[#0c2340] mb-2 flex items-center gap-2">
                 <span className="text-yellow-600">★</span>
                 Complainant (Required)
@@ -578,13 +578,13 @@ export default function NewCasePage() {
                 <div className="bg-slate-50 p-4 rounded-xl border border-yellow-200">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-yellow-50 rounded-full flex items-center justify-center text-yellow-700 font-bold text-lg">
+                      <div className="w-12 h-12 bg-slate-200 rounded-full flex items-center justify-center text-[#0c2340] font-bold text-lg">
                         {complainant.first_name.charAt(0)}
                       </div>
                       <div>
                         <p className="text-[#0c2340] font-semibold">{complainant.first_name} {complainant.middle_name} {complainant.last_name}</p>
                         <p className="text-slate-500 text-sm">ID: {complainant.national_id || 'N/A'}</p>
-                        <span className="inline-block mt-1 px-2 py-0.5 bg-yellow-50 text-yellow-700 text-xs rounded-full border border-yellow-200">★ Complainant</span>
+                        <span className="inline-block mt-1 px-2 py-0.5 bg-slate-100 text-[#0c2340] text-xs rounded-full border border-slate-200">★ Complainant</span>
                       </div>
                     </div>
                     <button onClick={() => setComplainant(null)} className="text-red-500 hover:text-red-500 p-2">
@@ -612,10 +612,10 @@ export default function NewCasePage() {
                       className={inputBase}
                       onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleComplainantSearch())}
                     />
-                    <button onClick={handleComplainantSearch} disabled={isSearchingComplainant} className="px-6 py-3 bg-yellow-500 hover:bg-yellow-600 text-black font-medium rounded-xl transition-colors">
+                    <button onClick={handleComplainantSearch} disabled={isSearchingComplainant} className="px-6 py-3 bg-[#0c2340] hover:bg-[#1e3a5f] text-white font-medium rounded-xl transition-colors">
                       {isSearchingComplainant ? '...' : 'Search'}
                     </button>
-                    <button onClick={() => navigateToNewPerson(true)} className="px-6 py-3 bg-yellow-50 hover:bg-yellow-500/30 text-yellow-700 border border-yellow-200 rounded-xl transition-colors whitespace-nowrap">
+                    <button onClick={() => navigateToNewPerson(true)} className="px-6 py-3 bg-white hover:bg-slate-100 text-[#0c2340] border border-slate-200 rounded-xl transition-colors whitespace-nowrap">
                       + New
                     </button>
                   </div>
@@ -627,7 +627,7 @@ export default function NewCasePage() {
                             <p className="text-[#0c2340] font-medium">{p.first_name} {p.middle_name} {p.last_name}</p>
                             <p className="text-xs text-slate-500">ID: {p.national_id || 'N/A'}</p>
                           </div>
-                          <button className="px-3 py-1 bg-yellow-50 text-yellow-700 border border-yellow-200 rounded-lg text-sm">Select</button>
+                          <button className="px-3 py-1 bg-slate-100 text-[#0c2340] border border-slate-200 rounded-lg text-sm">Select</button>
                         </div>
                       ))}
                     </div>
@@ -653,10 +653,10 @@ export default function NewCasePage() {
                   className={inputBase}
                   onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handlePersonSearch())}
                 />
-                <button onClick={handlePersonSearch} disabled={isSearching} className="px-6 py-3 bg-[#0c2340] hover:bg-[#1e3a5f] text-[#0c2340] rounded-xl transition-colors">
+                <button onClick={handlePersonSearch} disabled={isSearching} className="px-6 py-3 bg-[#0c2340] hover:bg-[#1e3a5f] text-white rounded-xl transition-colors">
                   {isSearching ? '...' : 'Search'}
                 </button>
-                <button onClick={() => navigateToNewPerson(false)} className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-[#0c2340] rounded-xl transition-colors whitespace-nowrap">
+                <button onClick={() => navigateToNewPerson(false)} className="px-6 py-3 bg-white hover:bg-slate-100 text-[#0c2340] border border-slate-200 rounded-xl transition-colors whitespace-nowrap">
                   + New
                 </button>
               </div>
@@ -730,7 +730,7 @@ export default function NewCasePage() {
               <button onClick={() => { saveCurrentState(3); setStep(3); }} className="px-6 py-3 bg-white hover:bg-slate-100 text-[#0c2340] rounded-xl transition-all">
                 Skip to Evidence
               </button>
-              <button onClick={handleSubmitPersons} disabled={loading || !complainant} className="bg-gradient-to-r from-[#0c2340] to-[#1e3a5f] hover:from-[#1e3a5f] hover:to-[#2d4a6f] text-white font-bold py-3 px-8 rounded-xl shadow-lg transition-all disabled:opacity-50">
+              <button onClick={handleSubmitPersons} disabled={loading || !complainant} className="bg-[#0c2340] hover:bg-[#1e3a5f] text-white font-bold py-3 px-8 rounded-xl transition-all disabled:opacity-50">
                 {loading ? 'Saving...' : 'Continue to Evidence →'}
               </button>
             </div>
@@ -744,8 +744,8 @@ export default function NewCasePage() {
               <h2 className="text-lg font-semibold text-[#0c2340] mb-4">Add Evidence</h2>
               <p className="text-slate-500 text-sm mb-6">Upload photos, videos, audio recordings, or documents as evidence.</p>
 
-              <button onClick={navigateToNewEvidence} className="w-full px-6 py-4 bg-gradient-to-r from-purple-50 to-indigo-50 hover:from-purple-100 hover:to-indigo-100 border border-purple-200 text-[#0c2340] rounded-xl transition-all flex items-center justify-center gap-3">
-                <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+              <button onClick={navigateToNewEvidence} className="w-full px-6 py-4 bg-white hover:bg-slate-100 border border-slate-200 text-[#0c2340] rounded-xl transition-all flex items-center justify-center gap-3">
+                <svg className="w-6 h-6 text-[#0c2340]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
                 Add New Evidence
               </button>
 
@@ -755,8 +755,8 @@ export default function NewCasePage() {
                   {evidenceList.map((evidence, index) => (
                     <div key={index} className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border border-slate-200">
                       <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 bg-purple-50 rounded-full flex items-center justify-center">
-                          <svg className="w-5 h-5 text-purple-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                        <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center">
+                          <svg className="w-5 h-5 text-[#0c2340]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                         </div>
                         <div>
                           <p className="text-[#0c2340] font-medium">{evidence.evidence_code || `Evidence #${index + 1}`}</p>
@@ -774,7 +774,7 @@ export default function NewCasePage() {
 
             <div className="pt-4 border-t border-slate-200 flex justify-between">
               <button onClick={() => setStep(2)} className="px-6 py-3 bg-white hover:bg-slate-100 text-[#0c2340] rounded-xl transition-all">← Back to Persons</button>
-              <button onClick={handleFinish} className="bg-gradient-to-r from-green-700 to-emerald-800 hover:from-green-600 hover:to-emerald-700 text-[#0c2340] font-bold py-3 px-8 rounded-xl shadow-lg transition-all flex items-center gap-2">
+              <button onClick={handleFinish} className="bg-[#0c2340] hover:bg-[#1e3a5f] text-white font-bold py-3 px-8 rounded-xl transition-all flex items-center gap-2">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
                 Complete Registration
               </button>
